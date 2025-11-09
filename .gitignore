@@ -45,6 +45,14 @@ Thumbs.db
 *.swo
 *~
 
+# AI Instructions (local only)
+.ai_instructions
+
+# SQLite Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Temporary files
 *.tmp
 *.temp

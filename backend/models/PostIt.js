@@ -1,4 +1,3 @@
-const { ObjectId } = require('mongodb');
 const { getDB } = require('../database');
 
 class PostIt {
@@ -13,51 +12,96 @@ class PostIt {
       zIndex: data.position?.zIndex || 1
     };
     this.color = data.color || '#FBBF24'; // Default yellow
-    this.createdAt = data.createdAt || new Date();
-    this.updatedAt = data.updatedAt || new Date();
+    this.createdAt = data.createdAt || new Date().toISOString();
+    this.updatedAt = data.updatedAt || new Date().toISOString();
   }
 
   // Create a new post-it
-  static async create(postItData) {
+  static create(postItData) {
     const db = getDB();
     
     // Validate articleId exists
-    const article = await db.collection('articles').findOne({ _id: new ObjectId(postItData.articleId) });
+    const articleStmt = db.prepare('SELECT id FROM articles WHERE id = ?');
+    const article = articleStmt.get(postItData.articleId);
+    
     if (!article) {
       throw new Error('Article not found');
     }
     
     const postIt = new PostIt(postItData);
-    const result = await db.collection('postits').insertOne(postIt);
     
-    return { ...postIt, _id: result.insertedId };
+    const insertStmt = db.prepare(`
+      INSERT INTO postits (content, articleId, position, color, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = insertStmt.run(
+      postIt.content,
+      postIt.articleId,
+      JSON.stringify(postIt.position),
+      postIt.color,
+      postIt.createdAt,
+      postIt.updatedAt
+    );
+    
+    return { ...postIt, _id: result.lastInsertRowid.toString() };
   }
 
   // Get all post-its with optional filtering
-  static async findAll(options = {}) {
+  static findAll(options = {}) {
     const db = getDB();
     const { articleId, page = 1, limit = 50 } = options;
     
-    let query = {};
+    let query = 'SELECT * FROM postits';
+    let params = [];
     
     // Filter by article if provided
     if (articleId) {
-      query.articleId = articleId;
+      query += ' WHERE articleId = ?';
+      params.push(articleId);
     }
-
-    const skip = (page - 1) * limit;
     
-    const postits = await db.collection('postits')
-      .find(query)
-      .sort({ 'position.zIndex': 1, createdAt: 1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
+    // Add ordering by zIndex and createdAt
+    query += ' ORDER BY json_extract(position, "$.zIndex"), createdAt';
     
-    const total = await db.collection('postits').countDocuments(query);
+    // Add pagination
+    const offset = (page - 1) * limit;
+    query += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    const stmt = db.prepare(query);
+    const postits = stmt.all(...params);
+    
+    // Parse position JSON and add _id
+    const parsedPostits = postits.map(postit => {
+      let position = {};
+      try {
+        position = JSON.parse(postit.position || '{}');
+      } catch (e) {
+        position = { x: 0, y: 0, width: 200, height: 150, zIndex: 1 };
+      }
+      
+      return {
+        ...postit,
+        _id: postit.id.toString(),
+        position
+      };
+    });
+    
+    // Get total count for pagination
+    let countQuery = 'SELECT COUNT(*) as count FROM postits';
+    let countParams = [];
+    
+    if (articleId) {
+      countQuery += ' WHERE articleId = ?';
+      countParams.push(articleId);
+    }
+    
+    const countStmt = db.prepare(countQuery);
+    const { count: total } = countStmt.get(...countParams);
     
     return {
-      postits,
+      postits: parsedPostits,
       pagination: {
         page,
         limit,
@@ -68,47 +112,89 @@ class PostIt {
   }
 
   // Get post-its for a specific article
-  static async findByArticleId(articleId) {
+  static findByArticleId(articleId) {
     const db = getDB();
-    return await db.collection('postits')
-      .find({ articleId })
-      .sort({ 'position.zIndex': 1, createdAt: 1 })
-      .toArray();
+    const stmt = db.prepare(`
+      SELECT * FROM postits 
+      WHERE articleId = ? 
+      ORDER BY json_extract(position, "$.zIndex"), createdAt
+    `);
+    
+    const postits = stmt.all(articleId);
+    
+    return postits.map(postit => {
+      let position = {};
+      try {
+        position = JSON.parse(postit.position || '{}');
+      } catch (e) {
+        position = { x: 0, y: 0, width: 200, height: 150, zIndex: 1 };
+      }
+      
+      return {
+        ...postit,
+        _id: postit.id.toString(),
+        position
+      };
+    });
   }
 
   // Get post-it by ID
-  static async findById(id) {
+  static findById(id) {
     const db = getDB();
-    return await db.collection('postits').findOne({ _id: new ObjectId(id) });
+    const stmt = db.prepare('SELECT * FROM postits WHERE id = ?');
+    const postit = stmt.get(id);
+    
+    if (!postit) {
+      return null;
+    }
+    
+    let position = {};
+    try {
+      position = JSON.parse(postit.position || '{}');
+    } catch (e) {
+      position = { x: 0, y: 0, width: 200, height: 150, zIndex: 1 };
+    }
+    
+    return {
+      ...postit,
+      _id: postit.id.toString(),
+      position
+    };
   }
 
   // Update post-it by ID
-  static async updateById(id, updateData) {
+  static updateById(id, updateData) {
     const db = getDB();
     
     // Handle position updates specifically
     if (updateData.position) {
-      updateData.position = {
-        ...updateData.position
-      };
+      updateData.position = JSON.stringify(updateData.position);
     }
     
-    updateData.updatedAt = new Date();
+    updateData.updatedAt = new Date().toISOString();
     
-    const result = await db.collection('postits').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
+    // Build dynamic update query
+    const updateFields = Object.keys(updateData);
+    const setClause = updateFields.map(field => `${field} = ?`).join(', ');
+    const values = Object.values(updateData);
     
-    if (result.matchedCount === 0) {
+    const updateStmt = db.prepare(`
+      UPDATE postits 
+      SET ${setClause}
+      WHERE id = ?
+    `);
+    
+    const result = updateStmt.run(...values, id);
+    
+    if (result.changes === 0) {
       throw new Error('Post-it not found');
     }
     
-    return await PostIt.findById(id);
+    return PostIt.findById(id);
   }
 
   // Update only position (for dragging)
-  static async updatePosition(id, position) {
+  static updatePosition(id, position) {
     const db = getDB();
     
     const updateData = {
@@ -119,27 +205,35 @@ class PostIt {
         height: position.height || 150,
         zIndex: position.zIndex || 1
       },
-      updatedAt: new Date()
+      updatedAt: new Date().toISOString()
     };
     
-    const result = await db.collection('postits').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
+    const updateStmt = db.prepare(`
+      UPDATE postits 
+      SET position = ?, updatedAt = ?
+      WHERE id = ?
+    `);
+    
+    const result = updateStmt.run(
+      JSON.stringify(updateData.position),
+      updateData.updatedAt,
+      id
     );
     
-    if (result.matchedCount === 0) {
+    if (result.changes === 0) {
       throw new Error('Post-it not found');
     }
     
-    return await PostIt.findById(id);
+    return PostIt.findById(id);
   }
 
   // Delete post-it by ID
-  static async deleteById(id) {
+  static deleteById(id) {
     const db = getDB();
-    const result = await db.collection('postits').deleteOne({ _id: new ObjectId(id) });
+    const stmt = db.prepare('DELETE FROM postits WHERE id = ?');
+    const result = stmt.run(id);
     
-    if (result.deletedCount === 0) {
+    if (result.changes === 0) {
       throw new Error('Post-it not found');
     }
     
@@ -147,75 +241,91 @@ class PostIt {
   }
 
   // Delete all post-its for an article
-  static async deleteByArticleId(articleId) {
+  static deleteByArticleId(articleId) {
     const db = getDB();
-    const result = await db.collection('postits').deleteMany({ articleId });
+    const stmt = db.prepare('DELETE FROM postits WHERE articleId = ?');
+    const result = stmt.run(articleId);
     
     return { 
-      message: `${result.deletedCount} post-its deleted successfully`,
-      deletedCount: result.deletedCount
+      message: `${result.changes} post-its deleted successfully`,
+      deletedCount: result.changes
     };
   }
 
   // Get post-its count for an article
-  static async getCountByArticleId(articleId) {
+  static getCountByArticleId(articleId) {
     const db = getDB();
-    return await db.collection('postits').countDocuments({ articleId });
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM postits WHERE articleId = ?');
+    const { count } = stmt.get(articleId);
+    return count;
   }
 
   // Bulk update positions (for layout changes)
-  static async bulkUpdatePositions(updates) {
+  static bulkUpdatePositions(updates) {
     const db = getDB();
     
-    const operations = updates.map(update => ({
-      updateOne: {
-        filter: { _id: new ObjectId(update.id) },
-        update: {
-          $set: {
-            position: update.position,
-            updatedAt: new Date()
-          }
-        }
-      }
-    }));
-    
-    if (operations.length === 0) {
+    if (updates.length === 0) {
       return { message: 'No updates provided' };
     }
     
-    const result = await db.collection('postits').bulkWrite(operations);
+    const updateStmt = db.prepare(`
+      UPDATE postits 
+      SET position = ?, updatedAt = ?
+      WHERE id = ?
+    `);
+    
+    const updateTransaction = db.transaction((updates) => {
+      let modifiedCount = 0;
+      const updatedAt = new Date().toISOString();
+      
+      for (const update of updates) {
+        const result = updateStmt.run(
+          JSON.stringify(update.position),
+          updatedAt,
+          update.id
+        );
+        modifiedCount += result.changes;
+      }
+      
+      return modifiedCount;
+    });
+    
+    const modifiedCount = updateTransaction(updates);
     
     return {
-      message: `${result.modifiedCount} post-its updated successfully`,
-      modifiedCount: result.modifiedCount
+      message: `${modifiedCount} post-its updated successfully`,
+      modifiedCount
     };
   }
 
   // Get highest z-index for an article (for bringing to front)
-  static async getMaxZIndex(articleId) {
+  static getMaxZIndex(articleId) {
     const db = getDB();
     
-    const result = await db.collection('postits')
-      .findOne(
-        { articleId },
-        { sort: { 'position.zIndex': -1 } }
-      );
+    const stmt = db.prepare(`
+      SELECT json_extract(position, '$.zIndex') as zIndex 
+      FROM postits 
+      WHERE articleId = ? 
+      ORDER BY json_extract(position, '$.zIndex') DESC 
+      LIMIT 1
+    `);
     
-    return result ? result.position.zIndex : 0;
+    const result = stmt.get(articleId);
+    return result ? parseInt(result.zIndex) : 0;
   }
 
   // Bring post-it to front
-  static async bringToFront(id) {
+  static bringToFront(id) {
     const db = getDB();
     
-    const postIt = await PostIt.findById(id);
+    const postIt = PostIt.findById(id);
     if (!postIt) {
       throw new Error('Post-it not found');
     }
     
-    const maxZIndex = await PostIt.getMaxZIndex(postIt.articleId);
+    const maxZIndex = PostIt.getMaxZIndex(postIt.articleId);
     
-    return await PostIt.updatePosition(id, {
+    return PostIt.updatePosition(id, {
       ...postIt.position,
       zIndex: maxZIndex + 1
     });

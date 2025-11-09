@@ -49,17 +49,17 @@ app.use((req, res) => {
 });
 
 // Initialize database and start server
-const startServer = async () => {
+const startServer = () => {
   try {
-    await connectDB();
+    connectDB(); // SQLite connection is synchronous
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📚 Library Website Backend API`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`📄 Articles API: http://localhost:${PORT}/api/articles`);
-      console.log(`🏷️  Tags API: http://localhost:${PORT}/api/tags`);
-      console.log(`📝 Post-its API: http://localhost:${PORT}/api/postits`);
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Library Website Backend API`);
+      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`Articles API: http://localhost:${PORT}/api/articles`);
+      console.log(`Tags API: http://localhost:${PORT}/api/tags`);
+      console.log(`Post-its API: http://localhost:${PORT}/api/postits`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

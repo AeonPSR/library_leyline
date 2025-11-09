@@ -1,4 +1,3 @@
-const { ObjectId } = require('mongodb');
 const { getDB } = require('../database');
 
 class Article {
@@ -18,16 +17,30 @@ class Article {
     const db = getDB();
     const article = new Article(articleData);
     
-    const result = await db.collection('articles').insertOne(article);
-    const createdArticle = { ...article, _id: result.insertedId };
+    // Prepare the insert statement
+    const stmt = db.prepare(`
+      INSERT INTO articles (title, content, summary, tags, created_at, updated_at, version, is_published)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const result = stmt.run(
+      article.title || '',
+      article.content,
+      article.summary,
+      JSON.stringify(article.tags),
+      article.createdAt.toISOString(),
+      article.updatedAt.toISOString(),
+      article.version,
+      article.isPublished ? 1 : 0
+    );
+    
+    const createdArticle = { ...article, id: result.lastInsertRowid };
     
     // If no title provided, use the ID as title
     if (!articleData.title || articleData.title.trim() === '') {
-      await db.collection('articles').updateOne(
-        { _id: result.insertedId },
-        { $set: { title: result.insertedId.toString() } }
-      );
-      createdArticle.title = result.insertedId.toString();
+      const updateStmt = db.prepare('UPDATE articles SET title = ? WHERE id = ?');
+      updateStmt.run(result.lastInsertRowid.toString(), result.lastInsertRowid);
+      createdArticle.title = result.lastInsertRowid.toString();
     }
     
     return createdArticle;
@@ -38,31 +51,59 @@ class Article {
     const db = getDB();
     const { page = 1, limit = 10, tags, search } = options;
     
-    let query = {};
+    let whereClause = '';
+    let params = [];
+    
+    // Build WHERE conditions
+    let conditions = [];
     
     // Filter by tags if provided
     if (tags && tags.length > 0) {
-      query.tags = { $in: tags };
+      const tagConditions = tags.map(() => 'tags LIKE ?').join(' OR ');
+      conditions.push(`(${tagConditions})`);
+      tags.forEach(tag => params.push(`%"${tag}"%`));
     }
     
     // Search in title and content if provided
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
-      ];
+      conditions.push('(title LIKE ? OR content LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
     }
-
-    const skip = (page - 1) * limit;
     
-    const articles = await db.collection('articles')
-      .find(query)
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
+    if (conditions.length > 0) {
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+    }
     
-    const total = await db.collection('articles').countDocuments(query);
+    const offset = (page - 1) * limit;
+    
+    // Get articles with pagination
+    const stmt = db.prepare(`
+      SELECT * FROM articles 
+      ${whereClause}
+      ORDER BY updated_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    
+    const countStmt = db.prepare(`
+      SELECT COUNT(*) as total FROM articles 
+      ${whereClause}
+    `);
+    
+    const articles = stmt.all(...params, limit, offset).map(row => ({
+      id: row.id,
+      _id: row.id, // For compatibility with frontend
+      title: row.title,
+      content: row.content,
+      summary: row.summary,
+      tags: JSON.parse(row.tags || '[]'),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      version: row.version,
+      isPublished: Boolean(row.is_published)
+    }));
+    
+    const totalResult = countStmt.get(...params);
+    const total = totalResult.total;
     
     return {
       articles,
@@ -78,21 +119,63 @@ class Article {
   // Get article by ID
   static async findById(id) {
     const db = getDB();
-    return await db.collection('articles').findOne({ _id: new ObjectId(id) });
+    
+    const stmt = db.prepare('SELECT * FROM articles WHERE id = ?');
+    const row = stmt.get(id);
+    
+    if (!row) {
+      return null;
+    }
+    
+    return {
+      id: row.id,
+      _id: row.id, // For compatibility with frontend
+      title: row.title,
+      content: row.content,
+      summary: row.summary,
+      tags: JSON.parse(row.tags || '[]'),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      version: row.version,
+      isPublished: Boolean(row.is_published)
+    };
   }
 
   // Update article by ID
   static async updateById(id, updateData) {
     const db = getDB();
     updateData.updatedAt = new Date();
-    updateData.version = updateData.version ? updateData.version + 1 : 1;
     
-    const result = await db.collection('articles').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
+    // Get current version
+    const currentStmt = db.prepare('SELECT version FROM articles WHERE id = ?');
+    const current = currentStmt.get(id);
     
-    if (result.matchedCount === 0) {
+    if (!current) {
+      throw new Error('Article not found');
+    }
+    
+    updateData.version = current.version + 1;
+    
+    // Build dynamic update query
+    const fields = Object.keys(updateData);
+    const setClause = fields.map(field => {
+      if (field === 'tags') return 'tags = ?';
+      if (field === 'updatedAt') return 'updated_at = ?';
+      if (field === 'isPublished') return 'is_published = ?';
+      return `${field} = ?`;
+    }).join(', ');
+    
+    const values = fields.map(field => {
+      if (field === 'tags') return JSON.stringify(updateData[field]);
+      if (field === 'updatedAt') return updateData[field].toISOString();
+      if (field === 'isPublished') return updateData[field] ? 1 : 0;
+      return updateData[field];
+    });
+    
+    const stmt = db.prepare(`UPDATE articles SET ${setClause} WHERE id = ?`);
+    const result = stmt.run(...values, id);
+    
+    if (result.changes === 0) {
       throw new Error('Article not found');
     }
     
@@ -103,12 +186,11 @@ class Article {
   static async deleteById(id) {
     const db = getDB();
     
-    // First delete all post-its associated with this article
-    await db.collection('postits').deleteMany({ articleId: id });
+    // Delete using foreign key cascade (postits will be deleted automatically)
+    const stmt = db.prepare('DELETE FROM articles WHERE id = ?');
+    const result = stmt.run(id);
     
-    const result = await db.collection('articles').deleteOne({ _id: new ObjectId(id) });
-    
-    if (result.deletedCount === 0) {
+    if (result.changes === 0) {
       throw new Error('Article not found');
     }
     
@@ -118,17 +200,19 @@ class Article {
   // Add tags to article
   static async addTags(id, tags) {
     const db = getDB();
-    const result = await db.collection('articles').updateOne(
-      { _id: new ObjectId(id) },
-      { 
-        $addToSet: { tags: { $each: tags } },
-        $set: { updatedAt: new Date() }
-      }
-    );
     
-    if (result.matchedCount === 0) {
+    // Get current article
+    const article = await Article.findById(id);
+    if (!article) {
       throw new Error('Article not found');
     }
+    
+    // Merge with existing tags (remove duplicates)
+    const existingTags = article.tags || [];
+    const newTags = [...new Set([...existingTags, ...tags])];
+    
+    const stmt = db.prepare('UPDATE articles SET tags = ?, updated_at = ? WHERE id = ?');
+    stmt.run(JSON.stringify(newTags), new Date().toISOString(), id);
     
     return await Article.findById(id);
   }
@@ -136,17 +220,19 @@ class Article {
   // Remove tags from article
   static async removeTags(id, tags) {
     const db = getDB();
-    const result = await db.collection('articles').updateOne(
-      { _id: new ObjectId(id) },
-      { 
-        $pullAll: { tags: tags },
-        $set: { updatedAt: new Date() }
-      }
-    );
     
-    if (result.matchedCount === 0) {
+    // Get current article
+    const article = await Article.findById(id);
+    if (!article) {
       throw new Error('Article not found');
     }
+    
+    // Remove specified tags
+    const existingTags = article.tags || [];
+    const newTags = existingTags.filter(tag => !tags.includes(tag));
+    
+    const stmt = db.prepare('UPDATE articles SET tags = ?, updated_at = ? WHERE id = ?');
+    stmt.run(JSON.stringify(newTags), new Date().toISOString(), id);
     
     return await Article.findById(id);
   }

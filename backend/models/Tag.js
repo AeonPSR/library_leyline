@@ -1,4 +1,3 @@
-const { ObjectId } = require('mongodb');
 const { getDB } = require('../database');
 
 class Tag {
@@ -6,113 +5,158 @@ class Tag {
     this.name = data.name;
     this.description = data.description || '';
     this.color = data.color || '#3B82F6'; // Default blue color
-    this.createdAt = data.createdAt || new Date();
-    this.updatedAt = data.updatedAt || new Date();
+    this.createdAt = data.createdAt || new Date().toISOString();
+    this.updatedAt = data.updatedAt || new Date().toISOString();
   }
 
   // Create a new tag
-  static async create(tagData) {
+  static create(tagData) {
     const db = getDB();
     
     // Check if tag already exists (case insensitive)
-    const existingTag = await db.collection('tags').findOne({ 
-      name: { $regex: `^${tagData.name}$`, $options: 'i' } 
-    });
+    const checkStmt = db.prepare(`SELECT * FROM tags WHERE LOWER(name) = LOWER(?)`);
+    const existingTag = checkStmt.get(tagData.name);
     
     if (existingTag) {
       throw new Error('Tag already exists');
     }
     
     const tag = new Tag(tagData);
-    const result = await db.collection('tags').insertOne(tag);
+    const insertStmt = db.prepare(`
+      INSERT INTO tags (name, description, color, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?)
+    `);
     
-    return { ...tag, _id: result.insertedId };
+    const result = insertStmt.run(
+      tag.name,
+      tag.description,
+      tag.color,
+      tag.createdAt,
+      tag.updatedAt
+    );
+    
+    return { ...tag, _id: result.lastInsertRowid.toString() };
   }
 
   // Get all tags
-  static async findAll(options = {}) {
+  static findAll(options = {}) {
     const db = getDB();
     const { search, sortBy = 'name' } = options;
     
-    let query = {};
+    let query = 'SELECT * FROM tags';
+    let params = [];
     
     // Search in name and description if provided
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      query += ' WHERE name LIKE ? OR description LIKE ?';
+      params = [`%${search}%`, `%${search}%`];
     }
-
-    const sortOptions = {};
-    sortOptions[sortBy] = 1;
     
-    const tags = await db.collection('tags')
-      .find(query)
-      .sort(sortOptions)
-      .toArray();
+    // Add sorting
+    query += ` ORDER BY ${sortBy}`;
     
-    return tags;
+    const stmt = db.prepare(query);
+    const tags = stmt.all(...params);
+    
+    return tags.map(tag => ({ ...tag, _id: tag.id?.toString() || tag._id }));
   }
 
   // Get tag by ID
-  static async findById(id) {
+  static findById(id) {
     const db = getDB();
-    return await db.collection('tags').findOne({ _id: new ObjectId(id) });
+    const stmt = db.prepare('SELECT * FROM tags WHERE id = ?');
+    const tag = stmt.get(id);
+    
+    if (tag) {
+      return { ...tag, _id: tag.id.toString() };
+    }
+    return null;
   }
 
   // Get tag by name
-  static async findByName(name) {
+  static findByName(name) {
     const db = getDB();
-    return await db.collection('tags').findOne({ 
-      name: { $regex: `^${name}$`, $options: 'i' } 
-    });
+    const stmt = db.prepare('SELECT * FROM tags WHERE LOWER(name) = LOWER(?)');
+    const tag = stmt.get(name);
+    
+    if (tag) {
+      return { ...tag, _id: tag.id.toString() };
+    }
+    return null;
   }
 
   // Update tag by ID
-  static async updateById(id, updateData) {
+  static updateById(id, updateData) {
     const db = getDB();
     
     // If updating name, check for duplicates
     if (updateData.name) {
-      const existingTag = await db.collection('tags').findOne({ 
-        name: { $regex: `^${updateData.name}$`, $options: 'i' },
-        _id: { $ne: new ObjectId(id) }
-      });
+      const checkStmt = db.prepare(`
+        SELECT * FROM tags 
+        WHERE LOWER(name) = LOWER(?) AND id != ?
+      `);
+      const existingTag = checkStmt.get(updateData.name, id);
       
       if (existingTag) {
         throw new Error('Tag name already exists');
       }
     }
     
-    updateData.updatedAt = new Date();
+    updateData.updatedAt = new Date().toISOString();
     
-    const result = await db.collection('tags').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
+    // Build dynamic update query
+    const updateFields = Object.keys(updateData);
+    const setClause = updateFields.map(field => `${field} = ?`).join(', ');
+    const values = Object.values(updateData);
     
-    if (result.matchedCount === 0) {
+    const updateStmt = db.prepare(`
+      UPDATE tags 
+      SET ${setClause}
+      WHERE id = ?
+    `);
+    
+    const result = updateStmt.run(...values, id);
+    
+    if (result.changes === 0) {
       throw new Error('Tag not found');
     }
     
-    return await Tag.findById(id);
+    return Tag.findById(id);
   }
 
   // Delete tag by ID
-  static async deleteById(id) {
+  static deleteById(id) {
     const db = getDB();
     
-    // First, remove this tag from all articles
-    await db.collection('articles').updateMany(
-      { tags: { $in: [await Tag.getTagNameById(id)] } },
-      { $pull: { tags: await Tag.getTagNameById(id) } }
-    );
+    // First, get the tag name to remove from articles
+    const tagStmt = db.prepare('SELECT name FROM tags WHERE id = ?');
+    const tag = tagStmt.get(id);
+    
+    if (!tag) {
+      throw new Error('Tag not found');
+    }
+    
+    // Remove this tag from all articles
+    const articlesStmt = db.prepare('SELECT id, tags FROM articles');
+    const articles = articlesStmt.all();
+    
+    const updateStmt = db.prepare('UPDATE articles SET tags = ? WHERE id = ?');
+    
+    articles.forEach(article => {
+      if (article.tags) {
+        let tags = JSON.parse(article.tags);
+        if (Array.isArray(tags)) {
+          tags = tags.filter(tagName => tagName !== tag.name);
+          updateStmt.run(JSON.stringify(tags), article.id);
+        }
+      }
+    });
     
     // Then delete the tag
-    const result = await db.collection('tags').deleteOne({ _id: new ObjectId(id) });
+    const deleteStmt = db.prepare('DELETE FROM tags WHERE id = ?');
+    const result = deleteStmt.run(id);
     
-    if (result.deletedCount === 0) {
+    if (result.changes === 0) {
       throw new Error('Tag not found');
     }
     
@@ -120,70 +164,88 @@ class Tag {
   }
 
   // Helper method to get tag name by ID
-  static async getTagNameById(id) {
+  static getTagNameById(id) {
     const db = getDB();
-    const tag = await db.collection('tags').findOne({ _id: new ObjectId(id) });
+    const stmt = db.prepare('SELECT name FROM tags WHERE id = ?');
+    const tag = stmt.get(id);
     return tag ? tag.name : null;
   }
 
   // Get articles count for each tag
-  static async getTagsWithArticleCount() {
+  static getTagsWithArticleCount() {
     const db = getDB();
     
-    const pipeline = [
-      {
-        $lookup: {
-          from: 'articles',
-          localField: 'name',
-          foreignField: 'tags',
-          as: 'articles'
-        }
-      },
-      {
-        $addFields: {
-          articleCount: { $size: '$articles' }
-        }
-      },
-      {
-        $project: {
-          articles: 0 // Remove the articles array from the result
-        }
-      },
-      {
-        $sort: { name: 1 }
-      }
-    ];
+    const tagsStmt = db.prepare('SELECT * FROM tags ORDER BY name');
+    const tags = tagsStmt.all();
     
-    return await db.collection('tags').aggregate(pipeline).toArray();
+    const articlesStmt = db.prepare('SELECT tags FROM articles');
+    const articles = articlesStmt.all();
+    
+    // Count articles for each tag
+    const tagCounts = {};
+    
+    articles.forEach(article => {
+      if (article.tags) {
+        try {
+          const articleTags = JSON.parse(article.tags);
+          if (Array.isArray(articleTags)) {
+            articleTags.forEach(tagName => {
+              tagCounts[tagName] = (tagCounts[tagName] || 0) + 1;
+            });
+          }
+        } catch (e) {
+          // Skip invalid JSON
+        }
+      }
+    });
+    
+    return tags.map(tag => ({
+      ...tag,
+      _id: tag.id.toString(),
+      articleCount: tagCounts[tag.name] || 0
+    }));
   }
 
   // Get popular tags (most used)
-  static async getPopularTags(limit = 10) {
+  static getPopularTags(limit = 10) {
     const db = getDB();
     
-    const pipeline = [
-      { $unwind: '$tags' },
-      { $group: { _id: '$tags', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: 'tags',
-          localField: '_id',
-          foreignField: 'name',
-          as: 'tagInfo'
-        }
-      },
-      {
-        $project: {
-          name: '$_id',
-          count: 1,
-          tagInfo: { $arrayElemAt: ['$tagInfo', 0] }
+    const articlesStmt = db.prepare('SELECT tags FROM articles');
+    const articles = articlesStmt.all();
+    
+    // Count tag usage
+    const tagCounts = {};
+    
+    articles.forEach(article => {
+      if (article.tags) {
+        try {
+          const articleTags = JSON.parse(article.tags);
+          if (Array.isArray(articleTags)) {
+            articleTags.forEach(tagName => {
+              tagCounts[tagName] = (tagCounts[tagName] || 0) + 1;
+            });
+          }
+        } catch (e) {
+          // Skip invalid JSON
         }
       }
-    ];
+    });
     
-    return await db.collection('articles').aggregate(pipeline).toArray();
+    // Sort by count and get tag info
+    const sortedTags = Object.entries(tagCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, limit);
+    
+    const tagStmt = db.prepare('SELECT * FROM tags WHERE name = ?');
+    
+    return sortedTags.map(([tagName, count]) => {
+      const tagInfo = tagStmt.get(tagName);
+      return {
+        name: tagName,
+        count,
+        tagInfo: tagInfo ? { ...tagInfo, _id: tagInfo.id.toString() } : null
+      };
+    });
   }
 }
 

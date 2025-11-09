@@ -69,7 +69,7 @@ export default function ArticlesPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
-          <div className="text-red-500 text-xl mb-4">❌ Error</div>
+          <div className="text-red-500 text-xl mb-4">Error</div>
           <p className="text-gray-600">{error}</p>
           <button
             onClick={fetchArticles}
@@ -117,7 +117,9 @@ export default function ArticlesPage() {
       {/* Articles List */}
       {articles.length === 0 ? (
         <div className="text-center py-16">
-          <span className="text-6xl mb-4 block">📄</span>
+          <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center mb-6">
+            <span className="text-4xl text-gray-400">A</span>
+          </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No articles yet</h2>
           <p className="text-gray-600 mb-6">
             Get started by creating your first post-it board.

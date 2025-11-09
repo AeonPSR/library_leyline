@@ -2,7 +2,7 @@
 
 A modern web application for organizing and managing your personal library using an innovative post-it board system. Instead of traditional articles, content is organized as interactive post-it notes on boards.
 
-## 🚀 Current Features
+## Current Features
 
 ### Core System
 - **Post-it Board Concept**: Articles act as boards containing moveable post-it notes
@@ -37,7 +37,7 @@ A modern web application for organizing and managing your personal library using
 - **Loading States**: Progress indicators for async operations
 - **Error Handling**: User-friendly error messages
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Next.js 16** - React framework with App Router
@@ -55,7 +55,7 @@ A modern web application for organizing and managing your personal library using
 - **PostIts Collection**: Individual post-it content and positions
 - **Tags Collection**: Tag definitions with colors and descriptions
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 library_website/
@@ -73,7 +73,7 @@ library_website/
 └── README.md
 ```
 
-## 🔗 API Endpoints
+## API Endpoints
 
 ### Articles
 - `GET /api/articles` - List all articles
@@ -96,7 +96,7 @@ library_website/
 - `PUT /api/tags/:id` - Update tag
 - `DELETE /api/tags/:id` - Delete tag
 
-## 🎯 Key Innovations
+## Key Innovations
 
 1. **Post-it Board System**: Replaces traditional linear article format with spatial organization
 2. **Drag & Drop UX**: Natural interaction model for content arrangement
@@ -104,15 +104,33 @@ library_website/
 4. **Real-time Position Sync**: Maintains exact post-it positions across sessions
 5. **Confirmation Workflows**: Prevents accidental data loss with user confirmations
 
-## 🔧 Development Status
+## Development Status
 
 **Current State**: Fully functional with all core features implemented
 **Backend**: Complete REST API with MongoDB integration
 **Frontend**: Interactive UI with drag-and-drop post-it management
 **Database**: Cloud-hosted MongoDB Atlas with proper collections and relationships
 
-## 🚀 Getting Started
+## Getting Started
 
+### Quick Start (VS Code)
+This project includes pre-configured VS Code terminal profiles for easy development:
+
+1. **Open project in VS Code**
+2. **Open integrated terminal** (Ctrl + `)
+3. **Click the dropdown arrow** next to the + button in terminal
+4. **Select either:**
+   - **Backend Dev** - Starts the Node.js/Express server
+   - **Frontend Dev** - Starts the Next.js development server
+
+### Alternative: VS Code Tasks
+You can also use VS Code tasks (Ctrl + Shift + P → "Tasks: Run Task"):
+- **Start Backend** 
+- **Start Frontend**
+- **Start Both (Dev Mode)** - Runs both simultaneously
+
+### Manual Setup
+If not using VS Code:
 1. **Backend**: Navigate to `/backend` and run `npm run dev`
 2. **Frontend**: Navigate to `/frontend` and run `npm run dev`
 3. **Database**: MongoDB Atlas connection configured via environment variables

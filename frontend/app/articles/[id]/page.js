@@ -338,7 +338,7 @@ export default function ArticleBoardPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
-          <div className="text-red-500 text-xl mb-4">❌ Error</div>
+          <div className="text-red-500 text-xl mb-4">Error</div>
           <p className="text-gray-600">{error}</p>
         </div>
       </div>
@@ -625,7 +625,9 @@ export default function ArticleBoardPage() {
         {postits.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <span className="text-6xl mb-4 block">📝</span>
+              <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center mb-6">
+                <span className="text-4xl text-gray-400">N</span>
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Empty Board</h3>
               <p className="text-gray-600 mb-6">
                 Start by adding your first post-it note.
@@ -680,7 +682,7 @@ export default function ArticleBoardPage() {
                   onClick={() => deletePostit(postit._id)}
                   title="Delete post-it"
                 >
-                  ✕
+                  ×
                 </button>
 
                 <div className="p-3 h-full flex flex-col">

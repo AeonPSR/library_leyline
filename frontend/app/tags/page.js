@@ -190,7 +190,9 @@ export default function TagsPage() {
       {/* Tags List */}
       {tags.length === 0 ? (
         <div className="text-center py-16">
-          <span className="text-6xl mb-4 block">🏷️</span>
+          <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center mb-6">
+            <span className="text-4xl text-gray-400">T</span>
+          </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No tags yet</h2>
           <p className="text-gray-600 mb-6">
             Create tags to organize and categorize your articles.
