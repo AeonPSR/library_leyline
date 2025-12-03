@@ -154,14 +154,46 @@ jobs:
         run: echo "Deploying to production..."
 
   parallel-jobs:
-    name: Parallel Job ${{ matrix.job-number }}
+    name: ${{ matrix.job.name }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job-number: [1, 2, 3, 4]
+        job:
+          - name: "Parallel: Lint"
+            task: lint
+          - name: "Parallel: Unit Tests"
+            task: unit-test
+          - name: "Parallel: API Tests"
+            task: api-test
+          - name: "Parallel: Placeholder 4"
+            task: placeholder
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Run parallel task
-        run: echo "Running parallel job ${{ matrix.job-number }}"
+      - name: Setup Node.js
+        if: matrix.job.task != 'placeholder'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        if: matrix.job.task != 'placeholder'
+        run: npm ci
+        
+      - name: Run lint
+        if: matrix.job.task == 'lint'
+        run: npm run lint
+        
+      - name: Run unit tests
+        if: matrix.job.task == 'unit-test'
+        run: npm test
+        
+      - name: Run API tests
+        if: matrix.job.task == 'api-test'
+        run: npm run test:api
+        
+      - name: Placeholder task
+        if: matrix.job.task == 'placeholder'
+        run: echo "This is a placeholder for future parallel work"
