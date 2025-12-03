@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "echo \"Running unit tests...\" && exit 0",
-    "test:api": "echo \"Running API tests...\" && exit 0"
+    "test": "vitest run tests/unit",
+    "test:api": "vitest run tests/api",
+    "test:watch": "vitest",
+    "test:all": "vitest run"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
@@ -18,8 +20,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@vitejs/plugin-react": "^5.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "vitest": "^4.0.15"
   }
 }

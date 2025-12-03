@@ -1,24 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Library Leyline
+
+A full-stack library management application for organizing articles, post-its, and tags.
+
+## Tech Stack
+
+### Frontend & Backend
+- **Next.js 16** - React framework with App Router
+- **React 19** - UI library
+- **Tailwind CSS 4** - Styling
+
+### Database
+- **SQLite** - Local database via better-sqlite3
+- **better-sqlite3** - Synchronous SQLite3 bindings
+
+### Development Tools
+- **ESLint** - Code linting
+- **Vitest** - Unit and API testing
+- **GitHub Actions** - CI/CD pipeline
+
+### Architecture
+- **API Routes** - Next.js API routes (`/app/api/*`)
+- **Models** - Data layer in `/lib/models/`
+- **Database** - SQLite connection in `/lib/database.js`
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- npm
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### Testing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Run all tests
+npm test
+
+# Run API tests
+npm run test:api
+```
+
+### Building
+
+```bash
+npm run build
+npm start
+```
+
+## Project Structure
+
+```
+├── app/
+│   ├── api/           # API routes
+│   │   ├── articles/
+│   │   ├── postits/
+│   │   └── tags/
+│   └── page.js        # Main page
+├── components/        # React components
+├── lib/
+│   ├── database.js    # SQLite connection
+│   └── models/        # Data models
+│       ├── Article.js
+│       ├── PostIt.js
+│       └── Tag.js
+└── .github/
+    └── workflows/     # CI/CD pipelines
+```
+
+## Features
+
+- 📝 Article management with versioning
+- 📌 Post-it notes linked to articles
+- 🏷️ Tag system for organization
+- 🔍 Search and filtering
+- 🚀 CI/CD with GitHub Actions
 
 ## Learn More
 
