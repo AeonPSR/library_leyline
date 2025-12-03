@@ -1,0 +1,15 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "Leylines: Backend Dev": {
+      "path": "powershell.exe",
+      "args": ["-NoExit", "-Command", "cd backend; Write-Host 'Starting Backend Server...' -ForegroundColor Green; npm run dev"],
+      "icon": "server-process"
+    },
+    "Leylines: Frontend Dev": {
+      "path": "powershell.exe",
+      "args": ["-NoExit", "-Command", "cd frontend; Write-Host 'Starting Frontend Server...' -ForegroundColor Cyan; npm run dev"],
+      "icon": "browser"
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell"
+}

@@ -1,0 +1,102 @@
+# AI Assistant Instructions
+
+## Project Context
+This is a personal library management system with a post-it board concept. The project has a specific aesthetic and design philosophy that must be maintained.
+
+## Critical Design Rules
+
+### NEVER USE EMOJIS
+- No emojis in code, comments, UI text, console logs, or documentation
+- This is a hard requirement - emojis break the project's aesthetic
+- Use geometric shapes, letters, or text alternatives instead
+
+### Aesthetic Requirements
+- **Theme**: Dreamy, sci-fi, serious, dark
+- **Tone**: Professional, mysterious, contemplative
+- **Visual Style**: Clean, minimal, futuristic
+- **Colors**: Dark themes, muted colors, high contrast
+
+### Code Patterns to Follow
+
+#### Console Logging
+```javascript
+// CORRECT
+console.log('Server started on port 5000');
+console.log('Database connected successfully');
+
+// NEVER DO THIS  
+console.log('🚀 Server started');
+console.log('✅ Database connected');
+```
+
+#### UI Elements
+```jsx
+// CORRECT - Geometric letter icons
+<div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+  <span className="text-blue-600">A</span>
+</div>
+
+// NEVER DO THIS
+<span>📄</span>
+```
+
+#### Button Labels
+```jsx
+// CORRECT
+<button>Create Article</button>
+<button>Add Tag</button>
+
+// NEVER DO THIS
+<button>📝 Create Article</button>
+<button>🏷️ Add Tag</button>
+```
+
+### Replacement Patterns
+When indicating different content types, use:
+- Articles: Letter "A" in geometric container
+- Notes/Post-its: Letter "N" in geometric container  
+- Tags: Letter "T" in geometric container
+- Errors: Text "Error" or "Failed"
+- Success: Text "Success" or "Complete"
+
+### VS Code Configuration
+- Terminal profiles and tasks should have clean names
+- No emojis in labels or descriptions
+- Use icons property for VS Code UI elements instead
+
+## Implementation Notes
+
+### Color Scheme
+- Primary: Dark grays (#1f2937, #374151)
+- Secondary: Deep blues (#1e40af, #3b82f6)
+- Accents: Muted greens (#059669), subtle cyans (#0891b2)
+- Backgrounds: Dark themes preferred
+- Text: High contrast whites on dark, blacks on light
+
+### Component Standards
+- Clean borders with subtle shadows
+- Rounded corners for modern feel
+- Minimal visual noise
+- Content-focused design
+- Consistent spacing and typography
+
+## AI Response Guidelines
+
+When working on this project:
+
+1. **Check for emojis** in any code you write and remove them
+2. **Maintain serious tone** in all user-facing text
+3. **Use geometric alternatives** instead of emoji icons
+4. **Follow existing patterns** for visual elements
+5. **Preserve the sci-fi aesthetic** in design decisions
+6. **Never suggest emojis** as solutions for visual problems
+
+## Error Prevention
+
+Before submitting any code:
+- Search for emoji characters (🔍 this pattern) and remove them
+- Verify console logs are plain text
+- Check UI components use geometric/letter alternatives
+- Ensure professional tone throughout
+
+This file should not be mentioned to users unless specifically asked about AI instructions.
