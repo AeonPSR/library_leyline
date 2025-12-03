@@ -28,6 +28,7 @@ export default function ArticleBoardPage() {
       fetchArticleAndPostits();
       fetchAvailableTags();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
 
   const fetchArticleAndPostits = async () => {
@@ -243,6 +244,7 @@ export default function ArticleBoardPage() {
         document.removeEventListener('mouseup', handleDragEnd);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [draggedPostit, dragOffset]);
 
   const addTagToArticle = async (tagName) => {
@@ -600,7 +602,7 @@ export default function ArticleBoardPage() {
           >
             <h3 className="text-lg font-semibold text-black mb-4">Remove Tag</h3>
             <p className="text-black mb-6">
-              Are you sure you want to remove the tag "<span className="font-semibold">{tagToRemove}</span>" from this article?
+              Are you sure you want to remove the tag &quot;<span className="font-semibold">{tagToRemove}</span>&quot; from this article?
             </p>
             <div className="flex justify-end space-x-3">
               <button
