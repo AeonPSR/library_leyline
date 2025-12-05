@@ -4,12 +4,10 @@ import Article from '../../lib/models/Article.js';
 
 describe('Articles API Logic', () => {
   beforeEach(async () => {
-    // Close any existing connection and reconnect
-    closeDB();
-    connectDB();
+    // Connect to database if not already connected
+    const db = getDB();
     
     // Clear all tables
-    const db = getDB();
     db.exec('DELETE FROM postits');
     db.exec('DELETE FROM articles');
     db.exec('DELETE FROM tags');
