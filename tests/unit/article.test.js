@@ -1,15 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Article from '../../lib/models/Article.js';
-import { connectDB, closeDB, getDB } from '../../lib/database.js';
+import { getDB } from '../../lib/database.js';
 
 describe('Article Model', () => {
   beforeEach(async () => {
-    // Close any existing connection and reconnect
-    closeDB();
-    connectDB();
+    // Get database connection
+    const db = getDB();
     
     // Clear all tables
-    const db = getDB();
     db.exec('DELETE FROM postits');
     db.exec('DELETE FROM articles');
     db.exec('DELETE FROM tags');

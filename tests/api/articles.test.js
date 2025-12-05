@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { connectDB, closeDB, getDB } from '../../lib/database.js';
+import { getDB } from '../../lib/database.js';
 import Article from '../../lib/models/Article.js';
 
 describe('Articles API Logic', () => {
