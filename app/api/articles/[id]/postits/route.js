@@ -5,17 +5,18 @@ const PostIt = require('@/lib/models/PostIt');
 // GET /api/articles/[id]/postits - Get all post-its for an article
 export async function GET(request, { params }) {
   try {
+    const { id } = await params;
     // First check if article exists
-    const article = await Article.findById(params.id);
+    const article = await Article.findById(id);
     if (!article) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
-    const postits = await PostIt.findByArticleId(params.id);
-    const count = await PostIt.getCountByArticleId(params.id);
+    const postits = await PostIt.findByArticleId(id);
+    const count = await PostIt.getCountByArticleId(id);
     
     return NextResponse.json({
-      articleId: params.id,
+      articleId: id,
       articleTitle: article.title,
       postits,
       count

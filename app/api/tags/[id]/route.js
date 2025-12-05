@@ -4,7 +4,8 @@ const Tag = require('@/lib/models/Tag');
 // GET /api/tags/[id] - Get tag by ID
 export async function GET(request, { params }) {
   try {
-    const tag = await Tag.findById(params.id);
+    const { id } = await params;
+    const tag = await Tag.findById(id);
     
     if (!tag) {
       return NextResponse.json({ error: 'Tag not found' }, { status: 404 });
@@ -20,6 +21,7 @@ export async function GET(request, { params }) {
 // PUT /api/tags/[id] - Update tag
 export async function PUT(request, { params }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, description, color } = body;
     
@@ -28,7 +30,7 @@ export async function PUT(request, { params }) {
     if (description !== undefined) updateData.description = description.trim();
     if (color) updateData.color = color;
 
-    const tag = await Tag.updateById(params.id, updateData);
+    const tag = await Tag.updateById(id, updateData);
     return NextResponse.json(tag);
   } catch (error) {
     console.error('Error updating tag:', error);
@@ -45,7 +47,8 @@ export async function PUT(request, { params }) {
 // DELETE /api/tags/[id] - Delete tag
 export async function DELETE(request, { params }) {
   try {
-    const result = await Tag.deleteById(params.id);
+    const { id } = await params;
+    const result = await Tag.deleteById(id);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error deleting tag:', error);

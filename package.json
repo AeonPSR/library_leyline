@@ -4,13 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:test": "cross-env USE_TEST_DB=true next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run tests/unit",
     "test:api": "vitest run tests/api",
     "test:watch": "vitest",
-    "test:all": "vitest run"
+    "test:all": "vitest run",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:e2e": "start-server-and-test dev:test http://localhost:3000 cypress:run"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
@@ -21,8 +25,11 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@vitejs/plugin-react": "^5.1.1",
+    "cross-env": "^10.1.0",
+    "cypress": "^15.7.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
+    "start-server-and-test": "^2.1.3",
     "tailwindcss": "^4",
     "vitest": "^4.0.15"
   }

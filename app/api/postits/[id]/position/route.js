@@ -4,6 +4,7 @@ const PostIt = require('@/lib/models/PostIt');
 // PATCH /api/postits/[id]/position - Update only position (for dragging)
 export async function PATCH(request, { params }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { position } = body;
     
@@ -14,7 +15,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const postIt = await PostIt.updatePosition(params.id, position);
+    const postIt = await PostIt.updatePosition(id, position);
     return NextResponse.json(postIt);
   } catch (error) {
     console.error('Error updating post-it position:', error);

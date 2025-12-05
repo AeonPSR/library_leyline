@@ -43,6 +43,9 @@ next-env.d.ts
 # cypress
 cypress/videos
 cypress/screenshots
+tests/e2e/videos
+tests/e2e/screenshots
+tests/e2e/downloads
 
 # database
 *.db

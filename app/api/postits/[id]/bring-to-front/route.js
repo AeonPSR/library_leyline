@@ -4,7 +4,8 @@ const PostIt = require('@/lib/models/PostIt');
 // POST /api/postits/[id]/bring-to-front - Bring post-it to front
 export async function POST(request, { params }) {
   try {
-    const postIt = await PostIt.bringToFront(params.id);
+    const { id } = await params;
+    const postIt = await PostIt.bringToFront(id);
     return NextResponse.json(postIt);
   } catch (error) {
     console.error('Error bringing post-it to front:', error);
