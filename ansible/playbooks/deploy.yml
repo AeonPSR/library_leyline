@@ -1,0 +1,17 @@
+---
+# Deployment playbook for Library Website
+- name: Deploy Next.js Application
+  hosts: production
+  become: yes
+  
+  vars:
+    app_name: library-website
+    app_port: 3000
+    app_dir: /var/www/{{ app_name }}
+    node_version: "20"
+    
+  roles:
+    - nodejs
+    - app
+    - pm2
+    - nginx

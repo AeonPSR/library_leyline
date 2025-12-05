@@ -1,0 +1,61 @@
+---
+# Deploy the Next.js application
+- name: Create application directory
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Create database directory
+  file:
+    path: "{{ app_dir }}/data"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Create logs directory
+  file:
+    path: "{{ app_dir }}/logs"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy application files
+  synchronize:
+    src: "{{ playbook_dir }}/../../"
+    dest: "{{ app_dir }}/"
+    delete: yes
+    rsync_opts:
+      - "--exclude=node_modules"
+      - "--exclude=.next"
+      - "--exclude=.git"
+      - "--exclude=*.db"
+      - "--exclude=tests"
+      - "--exclude=cypress"
+
+- name: Install dependencies
+  npm:
+    path: "{{ app_dir }}"
+    state: present
+    production: yes
+  environment:
+    NODE_ENV: production
+
+- name: Build Next.js application
+  command: npm run build
+  args:
+    chdir: "{{ app_dir }}"
+  environment:
+    NODE_ENV: production
+
+- name: Create .env file
+  template:
+    src: env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'

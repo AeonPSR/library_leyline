@@ -1,0 +1,51 @@
+---
+# Install and configure PM2
+- name: Install PM2 globally
+  npm:
+    name: pm2
+    global: yes
+    state: present
+
+- name: Create PM2 ecosystem file
+  template:
+    src: ecosystem.config.js.j2
+    dest: "{{ app_dir }}/ecosystem.config.js"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Stop existing PM2 process
+  command: pm2 delete {{ app_name }}
+  args:
+    chdir: "{{ app_dir }}"
+  ignore_errors: yes
+  become_user: "{{ ansible_user }}"
+
+- name: Start application with PM2
+  command: pm2 start ecosystem.config.js
+  args:
+    chdir: "{{ app_dir }}"
+  become_user: "{{ ansible_user }}"
+
+- name: Save PM2 process list
+  command: pm2 save
+  become_user: "{{ ansible_user }}"
+
+- name: Setup PM2 startup script
+  command: pm2 startup systemd -u {{ ansible_user }} --hp /home/{{ ansible_user }}
+  register: pm2_startup
+  changed_when: false
+
+- name: Execute PM2 startup command
+  shell: "{{ pm2_startup.stdout }}"
+  when: pm2_startup.stdout is defined and pm2_startup.stdout != ""
+
+- name: Get PM2 status
+  command: pm2 list
+  register: pm2_status
+  become_user: "{{ ansible_user }}"
+  changed_when: false
+
+- name: Display PM2 status
+  debug:
+    msg: "{{ pm2_status.stdout_lines }}"

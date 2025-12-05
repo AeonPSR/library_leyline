@@ -1,0 +1,21 @@
+module.exports = {
+  apps: [{
+    name: '{{ app_name }}',
+    script: 'npm',
+    args: 'start',
+    cwd: '{{ app_dir }}',
+    instances: 2,
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: '{{ node_env }}',
+      PORT: {{ app_port }}
+    },
+    error_file: '{{ app_dir }}/logs/pm2-error.log',
+    out_file: '{{ app_dir }}/logs/pm2-out.log',
+    log_file: '{{ app_dir }}/logs/pm2-combined.log',
+    time: true,
+    autorestart: true,
+    max_memory_restart: '500M',
+    watch: false
+  }]
+};

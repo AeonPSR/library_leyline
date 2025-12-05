@@ -1,0 +1,7 @@
+---
+# Production environment variables
+app_name: library-website
+app_port: 3000
+app_dir: /opt/library-website
+node_env: production
+node_version: 20
