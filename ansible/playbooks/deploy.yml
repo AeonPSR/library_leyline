@@ -11,7 +11,7 @@
     node_version: "20"
     
   roles:
-    - nodejs
-    - app
-    - pm2
-    - nginx
+    - role: ../roles/nodejs
+    - role: ../roles/app
+    - role: ../roles/pm2
+    - role: ../roles/nginx
